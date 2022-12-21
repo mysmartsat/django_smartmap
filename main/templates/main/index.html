@@ -1,0 +1,63 @@
+{% extends "main/base.html" %}
+{% load static %}
+
+{% block extend_head %}
+
+    <style nonce="{{request.csp_nonce}}">
+        #intro {
+            height: 100%; /* div height */
+
+            background-image: url("{% static 'main/img/background_image.jpeg' %}");
+            background-size: cover; /* background image size, 'cover' forces image to cover entire container */
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+    </style>
+
+{% endblock %}
+
+
+{% block content %}
+
+    <div id="intro" class="container-fluid">
+        <div class="container">
+            <div class="row">
+                <style nonce="{{request.csp_nonce}}"> #socialImpact{text-align: center;}</style>
+                <h3 class="text-white mb-0" id="socialImpact">
+                    Building a Smart Mobility Network for the San Antonio Transit to Improve Transit Service and
+                    Social Impact (SmartSA)
+                </h3>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <a href="{% url 'map:map' %}" title="Go to Map">
+                        <style nonce="{{request.csp_nonce}}"> #mapButton{margin-left: 12.5%; margin-top: 5%; min-width: 75%; margin-bottom: 5%;
+                            object-fit: scale-down}</style>
+                        <img src="{% static 'main/img/MapButton.png' %}" alt="MAP" id="mapButton">
+                    </a>
+                    <a href="https://tamusa.co1.qualtrics.com/jfe/form/SV_7WF9vwgK7BUyoxE"
+                       title="Take the Survey" nonce="{{request.csp_nonce}}">
+                        <style nonce="{{request.csp_nonce}}"> #surveyButton{margin-left: 12.5%; margin-top: 5%; min-width: 75%; margin-bottom: 5%;
+                        object-fit: scale-down;}</style>
+                        <img src="{% static 'main/img/SurveyButton.png' %}" alt="Survey" id="surveyButton">
+                    </a>
+                </div>
+                <div class="col-md-9">
+                    <a href="https://tamusa.co1.qualtrics.com/jfe/form/SV_7WF9vwgK7BUyoxE"
+                       title="Take the Survey">
+                        <style nonce="{{request.csp_nonce}}"> #flyer{margin-top: 1.5%; object-fit: cover;}</style>
+                        <img src="{% static 'main/img/flyer.png' %}" class="img-fluid" alt="Survey" id="flyer">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block footer %}
+    {% include 'main/nsf_footer.html' %}
+{% endblock footer %}
