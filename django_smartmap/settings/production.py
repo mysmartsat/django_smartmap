@@ -78,3 +78,9 @@ TWILIO API KEYS
 """
 TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN")
+
+"""
+APP SETTINGS
+"""
+# TODO:Fix this later. I lost access to the secret manage in GCP. So, i am unable to add this now. Anoop
+# SYNC_BUS_SCHEDULES = env("SYNC_BUS_SCHEDULES")
