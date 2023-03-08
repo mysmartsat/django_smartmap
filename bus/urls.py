@@ -13,7 +13,7 @@ urlpatterns = [
     path('busestarrival-ajax/', views.getEstimatedArrivalAJAX, name='busestarrival-ajax'),
     path('activebussesonroute-ajax/', views.getActiveBussesOnRouteAJAX, name='activebussesonroute-ajax'),
     path('busroutepolyline-ajax/', views.getBusRouteGmapsPolylineEncodingAJAX, name='busroutepolyline-ajax'),
-
+    path('buslaststop-ajax/', views.updateLastBusStopManualAJAX, name='buslaststop-ajax'),
 
     # Transit log
     path('transitlogs/', views.transit_logs_view, name='transitlogs'),

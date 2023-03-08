@@ -172,4 +172,3 @@ Reference : https://dev.to/andreisfedotov/how-to-install-android-emulator-withou
     ![](readme-guide-images/android_studio_10.PNG)
 
 
-"# django_smartmap" 
