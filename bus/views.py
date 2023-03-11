@@ -3,6 +3,8 @@ import datetime
 import json
 from datetime import datetime
 from datetime import timedelta
+
+from django.conf import settings
 from django.utils import timezone
 
 import pytz
@@ -10,14 +12,14 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.shortcuts import render, HttpResponse
 
 import commons.helper
-from .distancematrixcalcs import calc_duration
+from .distancematrixcalcs import calc_duration, calc_est_arrival_times
 from .models import Bus, BusRoute, BusRouteDetails, BusSchedule
 from .models import TransitLog, BusArrivalLog, BusArrivalLogEntry
 
 BUS_SCHEDULE_INTERVAL_MINUTES = 40
 
 BUS_STOP_ARRIVAL_PROXIMITY = 10  # meters
-ARRIVAL_LOG_FREQUENCY = 30  # seconds
+ARRIVAL_LOG_FREQUENCY = 60  # seconds
 
 """
 Bus Driver page
@@ -27,7 +29,8 @@ Bus Driver page
 @login_required
 @permission_required('bus.access_busdriver_pages', raise_exception=True)
 def busdriver_view(request):
-    context = {'allRoutes': commons.helper.getAllActiveRoutesDropDown()}
+    context = {'allRoutes': commons.helper.getAllActiveRoutesDropDown(),
+               'google_api_key': settings.GOOGLE_MAP_API_KEY}
     return render(request, "bus/busdriver_2.html", context)
 
 
@@ -208,8 +211,9 @@ def bus_position_ajax(request):
 
         # Get current time
         # datetime_now = datetime.utcnow()  # original code
-        # datetime_now = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
-        datetime_now = timezone.now()
+        time_zone = pytz.timezone('US/Central')
+        datetime_now = datetime.utcnow().astimezone(time_zone)
+        # datetime_now = timezone.now()
 
         # Get BusRoute instance from db
         busRoute = BusRoute.objects.filter(pk=selected_route).first()
@@ -228,98 +232,47 @@ def bus_position_ajax(request):
             bus.route = busRoute
             bus.arrival_log_id = arrivalLog.id
             bus.start_time = datetime_now
-            bus.last_eta_logged_time = datetime_now
             bus.latest_route_stop_index = 0  # assumes bus hasn't first stop yet, allows its arrival to be logged
 
         # Update the bus coordinates and timekeeping
         bus.latitude = bus_lat
         bus.longitude = bus_lng
-        last_eta_logged_time = bus.last_eta_logged_time
+        bus.eta_log_time_counter += 1
         bus.save()
-
-        # Get BusRouteDetails set
-        busRouteDetails_set = bus.getBusRouteDetailsSet()
-
-        """ 
-        The following if-clause is executed at a frequency defined on the frontend (currently every ~2 sec) 
-        """
-        if bus.latest_route_stop_index < len(busRouteDetails_set):
-
-            # Look for proximity to a bus stop starting at last visited stop (if applicable)
-            nextBusStopIdx = None
-            for i in range(bus.latest_route_stop_index, len(busRouteDetails_set)):
-                if busRouteDetails_set[i].bus_stop.getGeodesicDistanceTo(
-                        bus.getCoordinates()).m < BUS_STOP_ARRIVAL_PROXIMITY:
-                    nextBusStopIdx = i
-                    break
-
-            # Check if arrived at next stop
-            if nextBusStopIdx is not None:  # None-check required because nextBusStopIdx can be 0
-                # Get next stop
-                nextBusRouteDetail = busRouteDetails_set[nextBusStopIdx]  # get BusRouteDetails obj at index nextB...
-                addArrivalTimeForStopByID(bus, nextBusRouteDetail.bus_stop.stop_id, datetime_now)
-
-                # Update bus's latest route stop index
-                bus.latest_route_stop_index = nextBusRouteDetail.route_index  # route_index starts at 1
-                bus.save(update_fields=['latest_route_stop_index'])
 
         """ 
         The following inner if-clause is executed at frequency ARRIVAL_LOG_FREQUENCY defined above
         """
-        # must check latest_route_stop_index again because previous if-clause can change it
-        if bus.latest_route_stop_index < len(busRouteDetails_set) and last_eta_logged_time is not None:
-            delta = datetime_now - last_eta_logged_time
+        # multiply 2 because of the 2-second interval in front end.
+        if bus.eta_log_time_counter * 2 > ARRIVAL_LOG_FREQUENCY:  # be aware that .seconds is capped at 86400
 
-            if delta.seconds > ARRIVAL_LOG_FREQUENCY:  # be aware that .seconds is capped at 86400
+            eta_responses = calc_est_arrival_times(bus.route, bus.latitude, bus.longitude, bus.latest_route_stop_index)
+            # Get the BusArrivalLog instance
+            arrivalLog = BusArrivalLog.objects.filter(id=bus.arrival_log_id).first()
 
-                # Get the BusArrivalLog instance
-                arrivalLog = BusArrivalLog.objects.filter(id=bus.arrival_log_id).first()
+            # Reset the counter
+            bus.eta_log_time_counter = 0
+            bus.save()
 
-                # Update the time value only here. So that the interval will be calculated properly
-                bus.last_eta_logged_time = datetime_now
-                bus.save()
-
-                for i in range(bus.latest_route_stop_index, len(busRouteDetails_set)):
-                    busStop = busRouteDetails_set[i].bus_stop
-                    res = calc_duration(bus.getCoordinates(), busStop.getCoordinates(), datetime_now)
-                    estimatedTime = datetime_now + timedelta(seconds=res['value'])
-
-                    # create ArrivalLogEntry
-                    arrivalLogEntry = BusArrivalLogEntry()
-                    arrivalLogEntry.bus_arrival_log = arrivalLog
-                    arrivalLogEntry.time_stamp = datetime_now
-                    arrivalLogEntry.bus_stop_id = busStop.stop_id
-                    arrivalLogEntry.bus_driver = bus.driver
-                    arrivalLogEntry.latitude = bus.latitude
-                    arrivalLogEntry.longitude = bus.longitude
-                    arrivalLogEntry.estimated_arrival_time = estimatedTime.strftime("%H:%M:%S")  # 24-hr format
-                    arrivalLogEntry.save()
-
-        # Data to pass back to frontend
-        # create indexing var for busRouteDetails_set to get name of last bus stop
-        lastStopIdx = bus.latest_route_stop_index
-        if lastStopIdx > 0:
-            lastStopIdx -= 1  # decrement for zero-based indexing of busRouteDetails_set
+            for bus_stop_id, response in eta_responses.items():
+                # print(response)
+                # create ArrivalLogEntry
+                arrivalLogEntry = BusArrivalLogEntry()
+                arrivalLogEntry.bus_arrival_log = arrivalLog
+                arrivalLogEntry.time_stamp = datetime_now
+                arrivalLogEntry.bus_stop_id = bus_stop_id
+                arrivalLogEntry.bus_driver = bus.driver
+                arrivalLogEntry.latitude = bus.latitude
+                arrivalLogEntry.longitude = bus.longitude
+                arrivalLogEntry.api_response_value = response['rows'][0]['elements'][0]['duration']['text']
+                estimated_time = datetime_now + timedelta(seconds=response['rows'][0]['elements'][0]['duration']['value'])
+                arrivalLogEntry.estimated_arrival_time = estimated_time.strftime("%I:%M %p")  # 12-hr format
+                arrivalLogEntry.save()
 
         return HttpResponse(json.dumps({'status': "Success",
-                                        'last_stop_idx': bus.latest_route_stop_index,
-                                        'last_stop_name': busRouteDetails_set[lastStopIdx].bus_stop.name}))
+                                        'last_stop_idx':bus.latest_route_stop_index}))
     else:
         return HttpResponse(json.dumps({'status': "Did not receive data."}))
-
-
-def addArrivalTimeForStopByID(bus: Bus, bus_stop_id: int, datetime_now):
-    # Get or create a BusArrivalLog instance
-    arrivalLog = BusArrivalLog.objects.filter(id=bus.arrival_log_id).first()
-    # create ArrivalLogEntry
-    arrivalLogEntry = BusArrivalLogEntry()
-    arrivalLogEntry.bus_arrival_log = arrivalLog
-    arrivalLogEntry.time_stamp = datetime_now
-    arrivalLogEntry.bus_stop_id = bus_stop_id
-    arrivalLogEntry.latitude = bus.latitude
-    arrivalLogEntry.longitude = bus.longitude
-    arrivalLogEntry.actual_arrival_time = str(datetime_now)
-    arrivalLogEntry.save()
 
 
 @login_required
@@ -355,14 +308,32 @@ def updateBusSeatAvailabilityAJAX(request):
 @permission_required('bus.access_busdriver_pages', raise_exception=True)
 def updateLastBusStopManualAJAX(request):
     data = ast.literal_eval(request.GET.get('data'))
-    btn_data = int(data.get('choice'))
+
     bus = Bus.objects.filter(driver=request.user.username).first()
-    if bus and btn_data > 0:
-        bus.latest_route_stop_index = btn_data
-        bus.save()
-        busStopId = BusRouteDetails.objects.filter(parent_route_id=bus.route_id,
-                                                   route_index=btn_data).first().bus_stop.stop_id
-        addArrivalTimeForStopByID(bus, busStopId, timezone.now())
+    busStop = data.get('bus_stop')
+    busStopIndex = data.get('bus_stop_index')
+    is_arrived = bool(data.get('is_arrived'))
+
+    # Get or create a BusArrivalLog instance
+    arrivalLog = BusArrivalLog.objects.filter(id=bus.arrival_log_id).first()
+    # create ArrivalLogEntry
+    arrivalLogEntry = BusArrivalLogEntry()
+    arrivalLogEntry.bus_arrival_log = arrivalLog
+
+    datetime_now = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
+
+    arrivalLogEntry.time_stamp = datetime_now
+    arrivalLogEntry.bus_stop_id = busStop
+    arrivalLogEntry.latitude = bus.latitude
+    arrivalLogEntry.longitude = bus.longitude
+    if is_arrived:
+        arrivalLogEntry.actual_arrival_time = str(datetime_now)
+    else:
+        arrivalLogEntry.stop_skipped_time = str(datetime_now)
+    arrivalLogEntry.save()
+
+    bus.latest_route_stop_index = busStopIndex
+    bus.save()
 
     return HttpResponse("Success")
 
