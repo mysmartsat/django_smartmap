@@ -47,6 +47,7 @@
         let activeStop = null;
         let locationMarker = null;
         let all_stops;
+        let changeViewCounter = 0
 
         function getMarker(latLng) {
             return new google.maps.Marker({
@@ -386,7 +387,15 @@
                 locationMarker = getMarker(pos)
 
                 if (geolocationPosition.timestamp - prevTime > broadcastFrequency) {
-
+                    if(changeViewCounter === 5)
+                    {
+                        changeViewCounter = 0;
+                        driver_page_map_obj.setCenter(pos);
+                    }
+                    else
+                    {
+                        changeViewCounter += 1;
+                    }
                     prevTime = geolocationPosition.timestamp
                     const geolocationCoordinates = geolocationPosition.coords;
 

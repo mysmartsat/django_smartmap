@@ -45,25 +45,6 @@ def getScheduleDayOfWeekLetter(date):
         return "W"
 
 
-def getEstimatedTime(busStopCoord, user_selected_route, scheduled_time):
-    dateNow = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
-    dateTime = dateNow.replace(hour=scheduled_time.hour, minute=scheduled_time.minute, second=scheduled_time.second)
-
-    if dateTime < datetime.utcnow().astimezone(pytz.timezone('US/Central')):
-        return None
-
-    route = BusRoute.objects.filter(id=user_selected_route).first()
-    startCoord = route.first_stop.getCoordinates()
-    eat_for_the_stop = calc_duration(startCoord, busStopCoord, dateTime)
-    # Add this value to the scheduled start time to find the time for the given stop.
-    next_schedule_arrival = dateTime + timedelta(seconds=eat_for_the_stop['value'])
-
-    # If the calculated time is in the past, move to the next schedule.
-    if next_schedule_arrival < datetime.utcnow().astimezone(pytz.timezone('US/Central')):
-        return None
-    return next_schedule_arrival
-
-
 def getEstimatedArrivalAJAX(request):
     """
     Called by BusStop js class method. User is requesting position of bus(es) for a route.
@@ -92,69 +73,24 @@ def getEstimatedArrivalAJAX(request):
     # assumptions:  only one bus at anytime per route
     bus = Bus.objects.filter(route=user_selected_route).first()  # TODO filter for multiple busses
 
+    dateTimeNow = datetime.now()
+    day_of_week = getScheduleDayOfWeekLetter(dateTimeNow)
+    next_arrival = BusSchedule.objects.filter(bus_route_id=user_selected_route, day_of_week=day_of_week,
+                                              bus_stop=busStop,
+                                              scheduled_time__gte=dateTimeNow.time().strftime('%H:%M:%S')).first()
+    if next_arrival is not None:
+        result['scheduled_arrival'] = f'{next_arrival.scheduled_time.strftime("%I:%M %p")} on {dateTimeNow.date().strftime("%B %d, %Y")}'
     if bus is None:
-        if calc_schedule == 1:
-            dateTimeNow = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
-            day_of_week = getScheduleDayOfWeekLetter(dateTimeNow)
-            next_schedules = BusSchedule.objects.filter(bus_route_id=user_selected_route, day_of_week=day_of_week,
-                                                        scheduled_time__hour__gte=dateTimeNow.time().hour - 1)
-            est_time = None
-            for schedule in next_schedules:
-                est_time = getEstimatedTime(busStopCoord, user_selected_route, schedule.scheduled_time)
-                if est_time is None:
-                    continue
-                else:
-                    break
-            if est_time is None:
-                est_time = calculate_approximate_schedule_time(busStopCoord, user_selected_route, bus)
-            result['scheduled_arrival'] = est_time.strftime("%I:%M %p on %B %d, %Y")
         return HttpResponse(json.dumps(result))
 
     busCoord = bus.getCoordinates()
     # send Bus obj coords and BusStop obj coords to dist matrix calc
     travelDuration = calc_duration(busCoord, busStopCoord)
-    result['est_arrival'] = travelDuration['rows'][0]['elements'][0]['duration']['text']
-    dateTimeNow = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
-    estimatedTime = dateTimeNow + timedelta(seconds=travelDuration['value'])
-    result['scheduled_arrival'] = estimatedTime.strftime("%I:%M %p on %B %d, %Y")
+    if 'duration' in travelDuration['rows'][0]['elements'][0].keys():
+        result['est_arrival'] = travelDuration['rows'][0]['elements'][0]['duration']['text']
 
     # return estimated arrival time result to user
     return HttpResponse(json.dumps(result))
-
-
-# TODO : Needs to update this function to fetch value from db
-def calculate_approximate_schedule_time(busStopCoord, user_selected_route, bus):
-    next_schedule_start = ""
-    if bus is not None:
-        # use the bus start time for calculation
-        next_schedule_start = bus.start_time
-    else:
-        # Calculate the number of minutes elapsed from midnight
-        now = datetime.now()
-        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        total_mins_elapsed = (now - midnight).seconds // 60
-        # Derive the total number of services completed. Assuming there is a service evry 40 minutes.
-        no_of_schedules = total_mins_elapsed // BUS_SCHEDULE_INTERVAL_MINUTES
-        # With this calculate the latest service start time
-        next_schedule_start = (midnight + timedelta(minutes=no_of_schedules * BUS_SCHEDULE_INTERVAL_MINUTES))
-
-    # Hard coding to CDT for now
-    next_schedule_start = next_schedule_start.astimezone(pytz.timezone('US/Central'))
-
-    # Now calculate the approximate travel time from the first bus stop till the selected stop.
-    route = BusRoute.objects.filter(id=int(user_selected_route)).first()
-    startCoord = route.first_stop.getCoordinates()
-    eat_for_the_stop = calc_duration(startCoord, busStopCoord)
-    eat_for_the_stop = eat_for_the_stop['rows'][0]['elements'][0]['duration']['value']
-
-    # Add this value to the scheduled start time to find the time for the given stop.
-    next_schedule_start = next_schedule_start + timedelta(seconds=eat_for_the_stop)
-
-    # If the calculated time is in the past, move to the next schedule.
-    if next_schedule_start < datetime.utcnow().astimezone(pytz.timezone('US/Central')):
-        next_schedule_start = next_schedule_start + timedelta(minutes=40)
-    return next_schedule_start
-
 
 def getActiveBussesOnRouteAJAX(request):
     # extract the data from the request
@@ -211,8 +147,8 @@ def bus_position_ajax(request):
 
         # Get current time
         # datetime_now = datetime.utcnow()  # original code
-        time_zone = pytz.timezone('US/Central')
-        datetime_now = datetime.utcnow().astimezone(time_zone)
+        # time_zone = pytz.timezone('US/Central')
+        datetime_now = datetime.now()
         # datetime_now = timezone.now()
 
         # Get BusRoute instance from db
@@ -320,7 +256,7 @@ def updateLastBusStopManualAJAX(request):
     arrivalLogEntry = BusArrivalLogEntry()
     arrivalLogEntry.bus_arrival_log = arrivalLog
 
-    datetime_now = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
+    datetime_now = datetime.now()
 
     arrivalLogEntry.time_stamp = datetime_now
     arrivalLogEntry.bus_stop_id = busStop
