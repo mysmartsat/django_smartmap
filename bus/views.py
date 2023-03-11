@@ -112,8 +112,8 @@ def getEstimatedArrivalAJAX(request):
 
     busCoord = bus.getCoordinates()
     # send Bus obj coords and BusStop obj coords to dist matrix calc
-    travelDuration = calc_duration(busCoord, busStopCoord, datetime.now())
-    result['est_arrival'] = travelDuration['text']
+    travelDuration = calc_duration(busCoord, busStopCoord)
+    result['est_arrival'] = travelDuration['rows'][0]['elements'][0]['duration']['text']
     dateTimeNow = datetime.utcnow().astimezone(pytz.timezone('US/Central'))
     estimatedTime = dateTimeNow + timedelta(seconds=travelDuration['value'])
     result['scheduled_arrival'] = estimatedTime.strftime("%I:%M %p on %B %d, %Y")
@@ -144,11 +144,11 @@ def calculate_approximate_schedule_time(busStopCoord, user_selected_route, bus):
     # Now calculate the approximate travel time from the first bus stop till the selected stop.
     route = BusRoute.objects.filter(id=int(user_selected_route)).first()
     startCoord = route.first_stop.getCoordinates()
-    eat_for_the_stop = calc_duration(startCoord, busStopCoord, datetime.now())
-    eat_for_the_stop = int(eat_for_the_stop['text'].split(' ')[0])
+    eat_for_the_stop = calc_duration(startCoord, busStopCoord)
+    eat_for_the_stop = eat_for_the_stop['rows'][0]['elements'][0]['duration']['value']
 
     # Add this value to the scheduled start time to find the time for the given stop.
-    next_schedule_start = next_schedule_start + timedelta(minutes=eat_for_the_stop)
+    next_schedule_start = next_schedule_start + timedelta(seconds=eat_for_the_stop)
 
     # If the calculated time is in the past, move to the next schedule.
     if next_schedule_start < datetime.utcnow().astimezone(pytz.timezone('US/Central')):
