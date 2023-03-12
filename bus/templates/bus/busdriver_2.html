@@ -12,7 +12,8 @@
     <style nonce="{{ request.csp_nonce }}">
 
         #driver_page_map {
-            height: 40vh; /* Google's suggested height of 100% may prevent map from displaying */
+            height: 60vh; /* Google's suggested height of 100% may prevent map from displaying */
+            overflow-y: scroll;
             margin-top: 10px;
         }
 
@@ -26,12 +27,6 @@
             font-size: xxx-large;
             font-weight: bold;
             color: black;
-        }
-
-
-        .no-seats-btn {
-            margin-top: 10px;
-            width: 100%;
         }
 
 
@@ -67,9 +62,10 @@
         function initMap() {
             let startLocation = {lat: 29.4190, lng: -98.4836}
             driver_page_map_obj = new google.maps.Map(document.getElementById('driver_page_map'), {
-                zoom: 18,
+                zoom: 15,
                 center: startLocation,
                 gestureHandling: "greedy",
+                clickableIcons: true,
                 disableDefaultUI: true,
             });
 
@@ -524,19 +520,19 @@
         <div id="seatAvailabilityInterfaceParent" class="mb-3">
             <h5>Open Seats</h5>
             <div class="row">
-                <div class="btn-group btn-group-lg open-seats-btn-group" role="group"
-                     aria-label="Basic mixed styles example">
+                <div class="btn-group btn-group-lg open-seats-btn-group">
                     <button type="button" class="btn btn-success seat-availability-btn" data-color="green">3+</button>
                     <button type="button" class="btn btn-warning seat-availability-btn" data-color="yellow"><3</button>
+                    <button type="button" class="btn btn-danger no-seats-btn seat-availability-btn" data-color="red"> None</button>
                 </div>
             </div>
-            <div class="row">
-                <div class="col">
-                    <button type="button" class="btn btn-danger btn-lg no-seats-btn seat-availability-btn"
-                            data-color="red">None
-                    </button>
-                </div>
-            </div>
+{#            <div class="row">#}
+{#                <div class="col">#}
+{#                    <button type="button" class="btn btn-danger btn-lg no-seats-btn seat-availability-btn"#}
+{#                            data-color="red">None#}
+{#                    </button>#}
+{#                </div>#}
+{#            </div>#}
 
             <!--The div element for the mapindex -->
             <div id="driver_page_map" class="d-grow"></div>
@@ -560,3 +556,4 @@
     </script>
 
 {% endblock %}
+
