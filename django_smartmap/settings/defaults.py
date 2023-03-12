@@ -157,7 +157,7 @@ CSP_IMG_SRC = (
     cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.6.1/js/bootstrap4-toggle.min.js',
       '''
 CSP_INCLUDE_NONCE_IN = (
-    'script-src', 'connect-src', 'style-src', 'font-src', 'img-src')  # for inline javascript and style csss
+    'script-src', 'connect-src', 'style-src', 'font-src', 'img-src')  # for inline javascript and style css
 
 CSP_FRAME_ANCESTORS = ("'none'")
 CSP_PREFETCH_SRC = ("'none'")
