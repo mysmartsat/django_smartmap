@@ -54,7 +54,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'csp.middleware.CSPMiddleware',
+    # Disabling csp for the duration of field test 3/13/2023 Anoop
+    # 'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'django_smartmap.urls'
