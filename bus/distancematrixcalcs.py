@@ -31,8 +31,7 @@ def calc_duration(origin, dest):
     Calculates transit duration between origin and dest. Meant for only one origin, one dest. Departure time default to current time.
     """
     response = distance_matrix(gmaps, origins=origin, destinations=dest,
-                          transit_mode="bus",
-                          mode="transit")
+                          transit_mode="bus", departure_time=datetime.now())
     # res['rows'][0]['elements'][0]['duration']
     return response
 
