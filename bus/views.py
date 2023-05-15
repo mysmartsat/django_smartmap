@@ -79,7 +79,8 @@ def getEstimatedArrivalAJAX(request):
                                               bus_stop=busStop,
                                               scheduled_time__gte=dateTimeNow.time().strftime('%H:%M:%S')).first()
     if next_arrival is not None:
-        result['scheduled_arrival'] = f'{next_arrival.scheduled_time.strftime("%I:%M %p")} on {dateTimeNow.date().strftime("%B %d, %Y")}'
+        result[
+            'scheduled_arrival'] = f'{next_arrival.scheduled_time.strftime("%I:%M %p")} on {dateTimeNow.date().strftime("%B %d, %Y")}'
     if bus is None:
         return HttpResponse(json.dumps(result))
 
@@ -91,6 +92,7 @@ def getEstimatedArrivalAJAX(request):
 
     # return estimated arrival time result to user
     return HttpResponse(json.dumps(result))
+
 
 def getActiveBussesOnRouteAJAX(request):
     # extract the data from the request
@@ -201,12 +203,13 @@ def bus_position_ajax(request):
                 arrivalLogEntry.latitude = bus.latitude
                 arrivalLogEntry.longitude = bus.longitude
                 arrivalLogEntry.api_response_value = response['rows'][0]['elements'][0]['duration']['text']
-                estimated_time = datetime_now + timedelta(seconds=response['rows'][0]['elements'][0]['duration']['value'])
+                estimated_time = datetime_now + timedelta(
+                    seconds=response['rows'][0]['elements'][0]['duration']['value'])
                 arrivalLogEntry.estimated_arrival_time = estimated_time.strftime("%I:%M %p")  # 12-hr format
                 arrivalLogEntry.save()
 
         return HttpResponse(json.dumps({'status': "Success",
-                                        'last_stop_idx':bus.latest_route_stop_index}))
+                                        'last_stop_idx': bus.latest_route_stop_index}))
     else:
         return HttpResponse(json.dumps({'status': "Did not receive data."}))
 
@@ -301,3 +304,11 @@ def downloadTransitLogCSV_AJAX(request):
             for entry in entries]
     filename = f"{transit_log.bus_route.name}-{transit_log.driver}-{transit_log.date_added.strftime('%Y-%m-%d_%H-%M-%S')}"
     return HttpResponse(json.dumps({'filename': filename, 'json_data': data}))
+
+
+@login_required
+# @permission_required('bus.access_busdriver_pages', raise_exception=True)
+def admin_view(request):
+    context = {'allRoutes': commons.helper.getAllActiveRoutesDropDown(),
+               'google_api_key': settings.GOOGLE_MAP_API_KEY}
+    return render(request, "bus/all_routes_admin_view.html", context)
