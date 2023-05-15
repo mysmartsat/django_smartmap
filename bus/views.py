@@ -108,6 +108,22 @@ def getActiveBussesOnRouteAJAX(request):
 
     return HttpResponse(json.dumps(bus_data))
 
+def getAllActiveBussesAJAX(request):
+    # filter for all busses active on user-selected route
+    busObjs = Bus.objects.all()
+
+    # bus data to send back to client
+    bus_data ={}
+    for bus in busObjs:
+        if bus.route.pk in bus_data:
+            bus_data[bus.route.pk].append({'bus_id': bus.id, 'bus_lat': bus.latitude, 'bus_lng': bus.longitude,
+                         'bus_color': bus.getBusColorStaticUrl(), 'title': f'{bus.driver} - {bus.route.name}'})
+        else:
+            bus_data[bus.route.pk] = [{'bus_id': bus.id, 'bus_lat': bus.latitude, 'bus_lng': bus.longitude,
+                         'bus_color': bus.getBusColorStaticUrl(), 'title': f'{bus.driver} - {bus.route.name}'}]
+
+    return HttpResponse(json.dumps(bus_data))
+
 
 def getBusRouteGmapsPolylineEncodingAJAX(request):
     """
@@ -146,6 +162,7 @@ def bus_position_ajax(request):
         selected_route = ajax_data['selected_route']
         bus_lat = ajax_data['latitude']
         bus_lng = ajax_data['longitude']
+        active_bus_id = ajax_data['active_bus_id']
 
         # Get current time
         # datetime_now = datetime.utcnow()  # original code
@@ -157,7 +174,10 @@ def bus_position_ajax(request):
         busRoute = BusRoute.objects.filter(pk=selected_route).first()
 
         # Check if the Bus instance exists already
-        bus = Bus.objects.filter(driver=request.user.username).first()
+        if active_bus_id != -1:
+            bus = Bus.objects.filter(pk=active_bus_id).first()
+        else:
+            bus = Bus.objects.filter(driver=request.user.username,route_id=selected_route).first()
 
         if bus is None:
             # Create BusArrivalLog
@@ -182,7 +202,7 @@ def bus_position_ajax(request):
         The following inner if-clause is executed at frequency ARRIVAL_LOG_FREQUENCY defined above
         """
         # multiply 2 because of the 2-second interval in front end.
-        if bus.eta_log_time_counter * 2 > ARRIVAL_LOG_FREQUENCY:  # be aware that .seconds is capped at 86400
+        if settings.LOG_ETA and ( bus.eta_log_time_counter * 2 > ARRIVAL_LOG_FREQUENCY):  # be aware that .seconds is capped at 86400
 
             eta_responses = calc_est_arrival_times(bus.route, bus.latitude, bus.longitude, bus.latest_route_stop_index)
             # Get the BusArrivalLog instance
@@ -209,7 +229,8 @@ def bus_position_ajax(request):
                 arrivalLogEntry.save()
 
         return HttpResponse(json.dumps({'status': "Success",
-                                        'last_stop_idx': bus.latest_route_stop_index}))
+                                        'last_stop_idx': bus.latest_route_stop_index,
+                                        'active_bus_id': bus.id}))
     else:
         return HttpResponse(json.dumps({'status': "Did not receive data."}))
 
