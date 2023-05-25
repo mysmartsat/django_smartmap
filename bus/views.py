@@ -79,7 +79,8 @@ def getEstimatedArrivalAJAX(request):
                                               bus_stop=busStop,
                                               scheduled_time__gte=dateTimeNow.time().strftime('%H:%M:%S')).first()
     if next_arrival is not None:
-        result['scheduled_arrival'] = f'{next_arrival.scheduled_time.strftime("%I:%M %p")} on {dateTimeNow.date().strftime("%B %d, %Y")}'
+        result[
+            'scheduled_arrival'] = f'{next_arrival.scheduled_time.strftime("%I:%M %p")} on {dateTimeNow.date().strftime("%B %d, %Y")}'
     if bus is None:
         return HttpResponse(json.dumps(result))
 
@@ -92,6 +93,7 @@ def getEstimatedArrivalAJAX(request):
     # return estimated arrival time result to user
     return HttpResponse(json.dumps(result))
 
+
 def getActiveBussesOnRouteAJAX(request):
     # extract the data from the request
     user_data = ast.literal_eval(request.GET.get('data'))
@@ -103,6 +105,22 @@ def getActiveBussesOnRouteAJAX(request):
     # bus data to send back to client
     bus_data = {bus.id: {'selected_route': bus.route.pk, 'bus_lat': bus.latitude, 'bus_lng': bus.longitude,
                          'bus_color': bus.getBusColorStaticUrl()} for bus in busObjs}
+
+    return HttpResponse(json.dumps(bus_data))
+
+def getAllActiveBussesAJAX(request):
+    # filter for all busses active on user-selected route
+    busObjs = Bus.objects.all()
+
+    # bus data to send back to client
+    bus_data ={}
+    for bus in busObjs:
+        if bus.route.pk in bus_data:
+            bus_data[bus.route.pk].append({'bus_id': bus.id, 'bus_lat': bus.latitude, 'bus_lng': bus.longitude,
+                         'bus_color': bus.getBusColorStaticUrl(), 'title': f'{bus.driver} - {bus.route.name}'})
+        else:
+            bus_data[bus.route.pk] = [{'bus_id': bus.id, 'bus_lat': bus.latitude, 'bus_lng': bus.longitude,
+                         'bus_color': bus.getBusColorStaticUrl(), 'title': f'{bus.driver} - {bus.route.name}'}]
 
     return HttpResponse(json.dumps(bus_data))
 
@@ -144,6 +162,7 @@ def bus_position_ajax(request):
         selected_route = ajax_data['selected_route']
         bus_lat = ajax_data['latitude']
         bus_lng = ajax_data['longitude']
+        active_bus_id = ajax_data['active_bus_id']
 
         # Get current time
         # datetime_now = datetime.utcnow()  # original code
@@ -155,7 +174,10 @@ def bus_position_ajax(request):
         busRoute = BusRoute.objects.filter(pk=selected_route).first()
 
         # Check if the Bus instance exists already
-        bus = Bus.objects.filter(driver=request.user.username).first()
+        if active_bus_id != -1:
+            bus = Bus.objects.filter(pk=active_bus_id).first()
+        else:
+            bus = Bus.objects.filter(driver=request.user.username,route_id=selected_route).first()
 
         if bus is None:
             # Create BusArrivalLog
@@ -180,7 +202,7 @@ def bus_position_ajax(request):
         The following inner if-clause is executed at frequency ARRIVAL_LOG_FREQUENCY defined above
         """
         # multiply 2 because of the 2-second interval in front end.
-        if bus.eta_log_time_counter * 2 > ARRIVAL_LOG_FREQUENCY:  # be aware that .seconds is capped at 86400
+        if settings.LOG_ETA and ( bus.eta_log_time_counter * 2 > ARRIVAL_LOG_FREQUENCY):  # be aware that .seconds is capped at 86400
 
             eta_responses = calc_est_arrival_times(bus.route, bus.latitude, bus.longitude, bus.latest_route_stop_index)
             # Get the BusArrivalLog instance
@@ -201,12 +223,14 @@ def bus_position_ajax(request):
                 arrivalLogEntry.latitude = bus.latitude
                 arrivalLogEntry.longitude = bus.longitude
                 arrivalLogEntry.api_response_value = response['rows'][0]['elements'][0]['duration']['text']
-                estimated_time = datetime_now + timedelta(seconds=response['rows'][0]['elements'][0]['duration']['value'])
+                estimated_time = datetime_now + timedelta(
+                    seconds=response['rows'][0]['elements'][0]['duration']['value'])
                 arrivalLogEntry.estimated_arrival_time = estimated_time.strftime("%I:%M %p")  # 12-hr format
                 arrivalLogEntry.save()
 
         return HttpResponse(json.dumps({'status': "Success",
-                                        'last_stop_idx':bus.latest_route_stop_index}))
+                                        'last_stop_idx': bus.latest_route_stop_index,
+                                        'active_bus_id': bus.id}))
     else:
         return HttpResponse(json.dumps({'status': "Did not receive data."}))
 
@@ -301,3 +325,11 @@ def downloadTransitLogCSV_AJAX(request):
             for entry in entries]
     filename = f"{transit_log.bus_route.name}-{transit_log.driver}-{transit_log.date_added.strftime('%Y-%m-%d_%H-%M-%S')}"
     return HttpResponse(json.dumps({'filename': filename, 'json_data': data}))
+
+
+@login_required
+# @permission_required('bus.access_busdriver_pages', raise_exception=True)
+def admin_view(request):
+    context = {'allRoutes': commons.helper.getAllActiveRoutesDropDown(),
+               'google_api_key': settings.GOOGLE_MAP_API_KEY}
+    return render(request, "bus/all_routes_admin_view.html", context)

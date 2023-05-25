@@ -43,6 +43,7 @@
         let locationMarker = null;
         let all_stops;
         let changeViewCounter = 0
+        let active_bus_id = -1;
 
         function getMarker(latLng) {
             return new google.maps.Marker({
@@ -398,6 +399,7 @@
                     // Send the location information to the server
                     const posData = {
                         'selected_route': routeSelect.val(),
+                        'active_bus_id': active_bus_id,
                         'latitude': geolocationCoordinates.latitude,
                         'longitude': geolocationCoordinates.longitude,
                         'accuracy': geolocationCoordinates.accuracy != null ? geolocationCoordinates.accuracy : "",
@@ -416,13 +418,14 @@
                         {#dataType: 'html',  // in this example HTML data is sent back via HttpResponse in views.py#}
                         success: (data) => {
                             if (data['status'] === "Success") {
+                                active_bus_id = data['active_bus_id']
                                 // Update position data status message on page
-
                                 if (data['last_stop_idx'] !== 0) {
                                     statusMessageDiv.html(`<p> Bus Passed / Arrived stop : ${data['last_stop_idx']} - ${all_stops[data['last_stop_idx']-1].BusStopName} </p>`)
                                 }
 
                             } else {
+                                active_bus_id = -1
                                 // Update position data status message on page
                                 statusMessageDiv.html(`${data['status']}`)
                             }
