@@ -243,8 +243,25 @@
 
         }
 
+
         // hide the details when unchecked
         $(document).ready(function () {
+
+            function toggleCheckBoxes(text, route_id) {
+                // extract the first two words from the text as the route name
+                let currentCheckboxText = text.split(" ").slice(0, 2).join(" ");
+                let currentCheckboxValue = route_id;
+                let allCheckboxes = $('input[type="checkbox"]');
+                allCheckboxes.each(function () {
+                    let checkboxText = $(this).parent().text().trim();
+                    let checkboxValue = +$(this).val();
+                    if (checkboxText.startsWith(currentCheckboxText) && checkboxValue !== currentCheckboxValue) {
+                        // disable the parent li element and add the disabled class
+                        $(this).parent().toggleClass('disabled');
+                    }
+                });
+            }
+
             // checkbox change event
             $('input[type="checkbox"]').click(function () {
                 {#console.log("checkbox clicked");#}
@@ -253,6 +270,10 @@
 
                     // add the route to the selected routes
                     selectedRoutes.push(+$(this).val());
+
+                    // disable all other checkboxes whose text starts with the same text as the current checkbox
+                    toggleCheckBoxes($(this).parent().text().trim(),+$(this).val())
+
 
                     if ($(this).val() in allRoutesMarkers) {
                         console.log("route already exists in memory");
@@ -288,6 +309,8 @@
                         return value !== Number(route_id);
                     });
 
+                    toggleCheckBoxes($(this).parent().text().trim(),+$(this).val())
+
                     {#console.log("checkbox unchecked");#}
                     if (route_id in allRoutesMarkers) {
                         // disable the markers if it already exists in memory
@@ -319,8 +342,9 @@
         <div data-bs-scroll="true">
             <ul class="list-group">
                 {% for route_id, route_text in allRoutes.items %}
+
                     <li class="list-group-item">
-                        <input class="form-check-input me-1" type="checkbox" value="{{ route_id }}">
+                        <input class="form-check-input me-1" name="{{ checkBoxName }}" type="checkbox" value="{{ route_id }}">
                         <b>{{ route_text }}</b>
                     </li>
                 {% endfor %}
