@@ -158,8 +158,7 @@ class BusStop {
     {
         const toSend = {
             'route': this.routeId,
-            'bus_stop_id': this.number,
-            'calc_schedule': this.scheduled_arrival === defaultTimeString ? 1 : 0
+            'bus_stop_id': this.number
         }
 
         return new Promise(( resolve, reject ) => {

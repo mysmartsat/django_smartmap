@@ -55,7 +55,6 @@ def getEstimatedArrivalAJAX(request):
     user_data = ast.literal_eval(request.GET.get('data'))
     user_selected_route = user_data.get('route')
     user_selected_bus_stop = user_data.get('bus_stop_id')
-    calc_schedule = user_data.get('calc_schedule')
 
     result = {
         'est_arrival': "",

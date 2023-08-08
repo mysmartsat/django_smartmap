@@ -415,7 +415,6 @@
                         // server-side, hence the object defined here
                         type: "GET",
                         dataType: 'json', // dataType specifies the type of data expected back from the server,
-                        {#dataType: 'html',  // in this example HTML data is sent back via HttpResponse in views.py#}
                         success: (data) => {
                             if (data['status'] === "Success") {
                                 active_bus_id = data['active_bus_id']
