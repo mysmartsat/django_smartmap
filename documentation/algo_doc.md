@@ -310,11 +310,27 @@ the polyline that is close to the current location of the bus.
 The polyline is then redrawn from the start of the route till the index 
 that is close to the current location of the bus.
 
-The following shows how the result looks in the actual application.
+[//]: # (The following shows how the result looks in the actual application.)
 
-[IMAGE POLYLINE – Without an active Bus] TODO: Add image
- 
-[IMAGE POLYLINE – With an active Bus] TODO: Add image
+[//]: # ()
+[//]: # ([IMAGE POLYLINE – Without an active Bus] TODO: Add image)
+
+[//]: # ( )
+[//]: # ([IMAGE POLYLINE – With an active Bus] TODO: Add image)
+
+The complete list of events happening in order to show the updated arrival time in an info window is as follows.
+
+1. User clicks on a bus stop. (This will open an infor window for that bus stop. Each info window
+ has a callback function that is called when the info window is opened. This callback function
+  is responsible for showing the arrival time in the info window. This callback function is
+invoked every 5 seconds to get the updated arrival time from the server.)
+2. The front-end code sends an AJAX request to the server to get the arrival time for the bus stop (This is the call back method mentioned in the previous step).
+3. The server code checks if there is an active bus on the route.
+4. If there is an active bus on the route, then the server code calls the Google Distance matrix API passing the 
+      Current location of the bus and the location of the bus stop to get the estimated travel time
+5. The server code returns the estimated travel time to the front-end code.
+6. If there is no active bus on the route, then the server code returns the scheduled arrival time of the bus to the front-end code.
+3. The front-end code displays the arrival time in the info window.
  
 
 ## 3. Bus Capacity with limited seats
@@ -443,3 +459,21 @@ Currently valid riders are those with a non-empty phone number. Phone numbers ar
 The following is a DB schema visualization chart.
 
 ![Database Schema Diagram](db_schema_diagram.jpg)
+
+This diagram shows the different tables that are part of the application.
+For the authentication part we are mainly using the authentication mechanism provided by django itself.
+**user_profile** table is used to store the additional information about the user. and this is
+the extra table created by us. This table used the auth_user table id as the foreign key.
+
+The tables included as part of the light green box are the main tables used to store the bus and route related details.
+The **bus_route** table is used to store information about all the bus routes part of the application. The **busstop** 
+table is used to store the information about all the bus stops in each route. The bus_route and bussstop tables has a foreign key
+relationship based on the route_id. The busstop has its own table because the same stop can be part of multiple routes. Due to this
+another table named busroutedetails is created which has a foreign key relationship with both bus_route and busstop tables. This table
+stores the details about which bus stops are part of the route and in what order.
+
+The transitlog and transitlogentry are purely for the loging purposes. The bus table is used to store the realtime 
+location and other application related information about all active buses currently running on the route.
+Whenever a driver start a route, an entry will be made in this table. The location information about that bus will
+get updated everytime the bus moves in a route. The entry will be removed from this table once the bus driver stops
+driving the route.

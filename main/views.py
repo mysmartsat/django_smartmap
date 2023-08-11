@@ -11,6 +11,9 @@ def index(request):
 def goals_objectives_view(request):
     return render(request, "main/goalsobjectives.html")
 
+def field_test_gallery_view(request):
+    return render(request, "main/field_test_gallery.html")
+
 
 def mobile_architecture_view(request):
     return render(request, "main/mobilearchitecture.html")
