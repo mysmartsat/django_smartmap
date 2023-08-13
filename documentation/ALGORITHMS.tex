@@ -1,0 +1,85 @@
+\documentclass{IEEEtran}
+
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\makeatletter
+\newcommand\fs@norules{\def\@fs@cfont{\bfseries}\let\@fs@capt\floatc@ruled
+  \def\@fs@pre{}%
+  \def\@fs@post{}%
+  \def\@fs@mid{\kern3pt}%
+  \let\@fs@iftopcapt\iftrue}
+\makeatother
+\floatstyle{norules}
+\restylefloat{algorithm}
+
+\begin{document}
+
+ \begin{algorithm}[H]
+ \caption{Algorithm to update the content for InfoWindow Object on bus stop marker}
+ \begin{algorithmic}[1]
+ \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+ \renewcommand{\algorithmicensure}{\textbf{Output:}}
+ \REQUIRE \textit{'route' and 'bus\_stop\_id'}
+ \ENSURE {The estimated and scheduled arrival times are updated}
+  \\ \textit{Initialisation} :
+  \FOR{ every 5 seconds}
+            \IF{An InfoWindow is Open}
+                % \STATE{Invoke the \textit{callBackMethod()}}
+                \STATE Call \textit{getEstimatedArrivalAJAX} with input parameters.
+                  \IF{data}
+                        \IF{data['est\_arrival'] is not empty}
+                            \IF{est\_arrival is equal to defaultTimeString}
+                                \STATE{scheduled\_arrival $\leftarrow$ defaultTimeString}
+                            \ENDIF
+                            \STATE{est\_arrival $\leftarrow$ data['est\_arrival']}
+                        \ELSE
+                             \STATE{est\_arrival $\leftarrow$ defaultTimeString}
+                        \ENDIF
+                        \IF{data['scheduled\_arrival'] is not empty}
+                                \STATE{scheduled\_arrival $\leftarrow$ data['scheduled\_arrival']}
+                        \ENDIF
+                    \ELSE
+                        \STATE{\textit{scheduled\_arrival} $\leftarrow$ \textit{defaultTimeString}}
+                        \STATE{\textit{est\_arrival} $\leftarrow$  \textit{defaultTimeString}}
+                    \ENDIF
+                    \STATE{Invoke method to Update the Active Info Window Content with latest Details}
+            \ENDIF
+        \ENDFOR
+ \RETURN $None$
+ \end{algorithmic}
+ \end{algorithm}
+
+
+  \begin{algorithm}[H]
+ \caption{Algorithm to get the estimated travel time for the selected bus stop}
+ \begin{algorithmic}[2]
+ \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+ \renewcommand{\algorithmicensure}{\textbf{Output:}}
+ \REQUIRE \textit{'route' and 'bus\_stop\_id'}
+ \ENSURE {The estimated and scheduled arrival times for the bus stop}
+  \\ \textit{Initialisation} :
+  \STATE
+  \STATE{$busStop$ $\leftarrow$ The bus stop instance for the given route and bus\_stop\_id}
+  \STATE{$busStopCoord$ $\leftarrow$ Lattitude and Longitude for the given buS stop.}
+  \STATE{$bus$ $\leftarrow$ Get the bus object for the given route}
+  \STATE{$day\_of\_week$ $\leftarrow$ Get the letter code for todays date.}
+  \STATE{$next\_arrival$ $\leftarrow$ Get the next scheduled arrival time for the given bus stop from database.}
+  \IF{$next\_arrival$ is not None}
+        \STATE{ $result['scheduled\_arrival']$ $\leftarrow$ String representation of scheduled arrival time.}
+  \ENDIF
+
+  \IF{$bus$ is None}
+    \STATE{return $result$}
+  \ENDIF
+  \STATE{$busCoord$ $\leftarrow$ Get Lattitude and Longitude for the bus}
+  \STATE{$travelDuration$ $\leftarrow$ Get the Estimated Travel time between the locations $busCoord$ and $busStopCoord$ by calling the Distance Matrix API.}
+  \IF{$duration$ in $travelDuration$}
+    \STATE{$result['est\_arrival']$ $\leftarrow$ Estimated travel time in text form.}
+  \ENDIF
+ \RETURN $result$
+ \end{algorithmic}
+ \end{algorithm}
+
+\end{document} 
+

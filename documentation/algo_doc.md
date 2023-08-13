@@ -116,8 +116,7 @@ callBackMethod() {
 
     const toSend = {
         'route': this.routeId,
-        'bus_stop_id': this.number,
-        'calc_schedule': this.scheduled_arrival === defaultTimeString ? 1 : 0
+        'bus_stop_id': this.number
     }
     jQuery.ajax({
         url: AJAX_URL_EST_ARRIVAL,
@@ -331,6 +330,12 @@ invoked every 5 seconds to get the updated arrival time from the server.)
 5. The server code returns the estimated travel time to the front-end code.
 6. If there is no active bus on the route, then the server code returns the scheduled arrival time of the bus to the front-end code.
 3. The front-end code displays the arrival time in the info window.
+
+
+The events can be represented in an algorithemic form as follows. The latex code for the same can be found at 
+[**documentation/algorithm.tex**]
+![Algorithm](ALGORITHMS.png)
+
  
 
 ## 3. Bus Capacity with limited seats
