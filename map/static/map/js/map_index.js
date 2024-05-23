@@ -479,11 +479,6 @@ function updateBusMarkers(data) {
 
         busMarkers.push(sidMarker);
     }
-    // Call reDrawPolyLineWithCurrentLocation after updating bus markers
-    if (displayedRoute !== "" && busMarkers.length > 0) {
-        console.log(`Bus markers updated. Calling reDrawPolyLineWithCurrentLocation with bus position: ${busMarkers[0].getPosition()}`);
-        reDrawPolyLineWithCurrentLocation(busMarkers[0].getPosition(), mapRoutePolylinePaths[displayedRoute]['polyline']);
-    }
 }
 
 /**
