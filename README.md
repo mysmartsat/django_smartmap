@@ -1,3 +1,10 @@
+<br><br>
+    ![Route51-64-93](readme-guide-images/Route30-64-93.gif)
+    ![Route51](readme-guide-images/Route51-Lee.gif)
+    ![Route93](readme-guide-images/Route93-A3.gif)
+    ![Route64](readme-guide-images/Route64-D-1.gif)
+<br><br>
+
 # Instructions
 
 # **Installation**
