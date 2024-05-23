@@ -215,7 +215,12 @@
                     })
 
                     busMarkers.push(sidMarker);
-
+                    // Extend polyline if it already exists
+                    if (allRoutesMarkers[route_id] && allRoutesMarkers[route_id]['polyline']) {
+                        let polylinePath = allRoutesMarkers[route_id]['polyline'].getPath();
+                        polylinePath.push(busLatLng);
+                        allRoutesMarkers[route_id]['polyline'].setPath(polylinePath);
+                    }
                 });
             }
         }
